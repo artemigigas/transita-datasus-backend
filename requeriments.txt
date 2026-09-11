@@ -1,0 +1,5 @@
+streamlit
+pysus
+pandas
+pyarrow
+fastparquet
