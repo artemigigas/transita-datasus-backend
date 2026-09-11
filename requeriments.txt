@@ -3,3 +3,4 @@ pysus
 pandas
 pyarrow
 fastparquet
+dbfread
