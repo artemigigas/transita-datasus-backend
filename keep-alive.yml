@@ -1,0 +1,31 @@
+name: Keep Streamlit Alive
+
+on:
+  schedule:
+    # Roda a cada 6 horas (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Permite testar manualmente na aba Actions
+
+jobs:
+  wake-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acessar app Streamlit via Headless Chromium
+        uses: microsoft/playwright-github-action@v1
+      - name: Abrir URL e aguardar carregamento
+        run: |
+          node -e '
+            const { chromium } = require("playwright");
+            (async () => {
+              const browser = await chromium.launch();
+              const page = await browser.newPage();
+              await page.goto("https://transita.streamlit.app/", { waitUntil: "networkidle", timeout: 60000 });
+              // Se o botão "Yes, get this app back up!" aparecer, clica nele
+              const wakeBtn = page.locator("button:has-text(\"get this app back up\")");
+              if (await wakeBtn.isVisible()) {
+                await wakeBtn.click();
+                await page.waitForTimeout(15000);
+              }
+              await browser.close();
+            })();
+          '
