@@ -1,31 +1,47 @@
-name: Keep Streamlit Alive
+name: Manter App Streamlit Ativo
 
 on:
   schedule:
-    # Roda a cada 6 horas (00:00, 06:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
-  workflow_dispatch: # Permite testar manualmente na aba Actions
+    # Executa a cada 12 horas (ajuste se necessário)
+    - cron: '0 */12 * * *'
+  workflow_dispatch: # Permite rodar manualmente pela aba Actions
 
 jobs:
-  wake-app:
-    runs-on:  ubuntu-24.04
+  wake-up:
+    runs-on: ubuntu-latest
     steps:
-      - name: Acessar app Streamlit via Headless Chromium
-        uses: microsoft/playwright-github-action@v1
+      - name: Instalar Playwright e Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+
       - name: Abrir URL e aguardar carregamento
+        env:
+          # Configure a URL nos Secrets do repositório ou substitua diretamente abaixo
+          STREAMLIT_URL: ${{ secrets.STREAMLIT_URL }}
         run: |
           node -e '
-            const { chromium } = require("playwright");
-            (async () => {
-              const browser = await chromium.launch();
-              const page = await browser.newPage();
-              await page.goto("https://transita.streamlit.app/", { waitUntil: "networkidle", timeout: 60000 });
-              // Se o botão "Yes, get this app back up!" aparecer, clica nele
-              const wakeBtn = page.locator("button:has-text(\"get this app back up\")");
-              if (await wakeBtn.isVisible()) {
-                await wakeBtn.click();
-                await page.waitForTimeout(15000);
-              }
-              await browser.close();
-            })();
+          const { chromium } = require("playwright");
+          (async () => {
+            const url = process.env.STREAMLIT_URL || "https://paquidermia.streamlit.app";
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            
+            console.log("Acessando:", url);
+            await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+            
+            // Verifica se apareceu o botão de acordar do Streamlit Cloud
+            const wakeButton = page.locator("button", { hasText: /Yes, get this app back up/i });
+            if (await wakeButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+              console.log("App hibernando. Clicando para acordar...");
+              await wakeButton.click();
+              await page.waitForTimeout(15000);
+            } else {
+              console.log("App já está ativo.");
+              await page.waitForTimeout(5000);
+            }
+            
+            await browser.close();
+          })();
           '
